@@ -12,7 +12,7 @@ def train_hmm_supervised_with_unk(
         dataset_name="batterydata/pos_tagging",
         split_name="train",
         word_field="words",
-        tag_field="sequence",
+        tag_field="labels",
         min_word_frequency=2,
         laplace_smoothing=1.0
 ):
