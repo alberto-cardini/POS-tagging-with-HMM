@@ -147,3 +147,50 @@ def draw_viterbi_trellis_with_path(hmm_model, sentence, best_path, figsize_mult=
 
     plt.tight_layout()
     plt.show()
+
+
+import pandas as pd
+
+
+def plot_transition_gradient_manual(hmm_model, title="HMM Transition Gradient (Sorted Log-Probs)"):
+    """
+    Crea una heatmap ordinando i tag per la somma delle loro log-probabilità.
+    Non richiede SciPy.
+    """
+    tags = hmm_model["tags"]
+    A = hmm_model["transition_probabilities"]
+
+    # Calcoliamo la matrice densa
+    n = len(tags)
+    matrix_data = []
+
+    for prev_tag in tags:
+        row = [math.log(A[prev_tag].get(curr_tag, 1e-12)) for curr_tag in tags]
+        matrix_data.append(row)
+
+    matrix = np.array(matrix_data)
+
+    # ORDINAMENTO PER GRADIENTE:
+    # Calcoliamo la "forza" di ogni tag (somma delle probabilità di uscita)
+    tag_strength = matrix.sum(axis=1)
+    # Otteniamo gli indici che ordinano i tag dal più debole al più forte
+    sorted_indices = np.argsort(tag_strength)
+
+    # Riordiniamo la matrice e la lista dei tag
+    sorted_tags = [tags[i] for i in sorted_indices]
+    matrix = matrix[sorted_indices, :]  # Riordina righe
+    matrix = matrix[:, sorted_indices]  # Riordina colonne
+
+    # Visualizzazione
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(matrix,
+                cmap="magma",
+                xticklabels=sorted_tags,
+                yticklabels=sorted_tags,
+                cbar_kws={'label': 'Log-Probability'})
+
+    plt.title(title, fontsize=15, pad=20)
+    plt.xlabel("Tag Successivo ($t$)", fontsize=12)
+    plt.ylabel("Tag Precedente ($t-1$)", fontsize=12)
+    plt.tight_layout()
+    plt.show()
