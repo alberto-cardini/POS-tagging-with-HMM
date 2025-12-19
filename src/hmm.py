@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     plot_transition_gradient_manual(model)
 
-    test_sentence = ["John", "is", "."]
+    test_sentence = ["John", "is", "my", "friend", "."]
     path, v_matrix, tags_list = run_viterbi(model, test_sentence)
     print("Tag stimati:", path)
 
