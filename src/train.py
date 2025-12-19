@@ -16,16 +16,15 @@ def train_hmm_supervised_with_unk(
         min_word_frequency=2,
         laplace_smoothing=1.0
 ):
-    """
-    Obiettivo: stimare i parametri di un HMM supervisionato per POS-tagging.
 
-    Parametri da stimare:
-    - transition_probabilities[prev_tag][curr_tag] = P(curr_tag | prev_tag)
-    - emission_probabilities[tag][word]           = P(word | tag)
+    # Obiettivo: stimare i parametri di un HMM supervisionato per POS-tagging.
 
-    Il dataset è supervisionato: ogni frase ha già (parole, tag).
-    Quindi NON serve Baum-Welch: basta contare e normalizzare.
-    """
+    # Parametri da stimare:
+    # - transition_probabilities[prev_tag][curr_tag] = P(curr_tag | prev_tag)
+    # - emission_probabilities[tag][word]           = P(word | tag)
+
+    # Il dataset è supervisionato: ogni frase ha già (parole, tag).
+    # Quindi NON serve Baum-Welch: basta contare e normalizzare.
 
     # 1) CARICAMENTO DATASET
     # load_dataset scarica (se serve) e carica il dataset in cache.
@@ -46,13 +45,13 @@ def train_hmm_supervised_with_unk(
 
     # Funzione che applica la regola: se la parola è rara => <UNK>
     def normalize_word(word):
-        """
-        Se una parola compare meno di min_word_frequency volte nel training,
-        la mappo a <UNK>.
 
-        Perché? così durante il training posso stimare P(<UNK> | tag),
-        e in test posso mappare parole mai viste a <UNK> invece di avere prob 0.
-        """
+        # Se una parola compare meno di min_word_frequency volte nel training,
+        # la mappo a <UNK>.
+
+        # Perché? così durante il training posso stimare P(<UNK> | tag),
+        # e in test posso mappare parole mai viste a <UNK> invece di avere prob 0.
+
         if word_frequency[word] < min_word_frequency:
             return UNKNOWN_WORD
         return word

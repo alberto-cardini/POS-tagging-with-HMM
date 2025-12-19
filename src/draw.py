@@ -1,11 +1,14 @@
 import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy as np
 import math
 
 def plot_viterbi_heatmap(viterbi_matrix, tags, words, title="Viterbi Heatmap (Log-Prob)"):
-    """Crea una heatmap pulita gestendo i valori -inf."""
+    #Crea una heatmap pulita gestendo i valori -inf.
     plt.figure(figsize=(12, len(tags) * 0.4))
 
-    # Pulizia: sostituiamo -inf con un valore molto basso per non rompere la scala colori
+    # Sostituiamo -inf con un valore molto basso per non rompere la scala colori
     clean_matrix = viterbi_matrix.copy()
     floor_val = np.nanmin(clean_matrix[clean_matrix != -np.inf]) - 10
     clean_matrix[clean_matrix == -np.inf] = floor_val
@@ -20,7 +23,7 @@ def plot_viterbi_heatmap(viterbi_matrix, tags, words, title="Viterbi Heatmap (Lo
 
 
 def plot_viterbi_3d(viterbi_matrix, tags, words):
-    """Crea un grafico 3D dei picchi di probabilità."""
+
     fig = plt.figure(figsize=(15, 12))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -48,7 +51,7 @@ def plot_viterbi_3d(viterbi_matrix, tags, words):
     ax.tick_params(axis='y', labelsize=7)
     ax.tick_params(axis='x', labelsize=8)
 
-    # 4. Aumenta la distanza delle etichette dall'asse (pad)
+    # 4. Aumenta la distanza delle etichette dall'asse
     ax.yaxis.labelpad = 20
 
     ax.set_xticks(np.arange(len(words)) + 0.75)
@@ -61,7 +64,7 @@ def plot_viterbi_3d(viterbi_matrix, tags, words):
 
 
 def plot_emission_probs(hmm_model, sentence, tags):
-    """Mostra quanto ogni parola 'attira' i vari tag (P(W|T))."""
+    # Mostra quanto ogni parola 'attira' i vari tag (P(W|T)).
     words = sentence
     matrix = np.zeros((len(tags), len(words)))
     B = hmm_model["emission_probabilities"]
@@ -75,21 +78,11 @@ def plot_emission_probs(hmm_model, sentence, tags):
     plt.figure(figsize=(10, len(tags) * 0.4))
     sns.heatmap(matrix, annot=True, fmt=".1f", cmap="YlGnBu",
                 xticklabels=words, yticklabels=tags)
-    plt.title("Matrice di Emissione per la frase (P(Parola | Tag))")
+    plt.title("Sentence Emission Probabilities Matrix ( P(Word | Tag) )")
     plt.show()
 
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import numpy as np
-
-
 def draw_viterbi_trellis_with_path(hmm_model, sentence, best_path, figsize_mult=(1.8, 0.45)):
-    """
-    Disegna il trellis diagram con:
-    1. Nodi colorati in base a P(word|tag) [Emissioni]
-    2. Frecce che mostrano il cammino di Viterbi [Path]
-    """
+
     B = hmm_model["emission_probabilities"]
     # Escludiamo i tag tecnici come fatto nel tuo codice viterbi
     tags = [t for t in hmm_model["tags"] if t not in ("<START>", "<END>")]
@@ -132,12 +125,10 @@ def draw_viterbi_trellis_with_path(hmm_model, sentence, best_path, figsize_mult=
                     fontsize=8, fontweight='bold' if is_in_path else 'normal',
                     color="white" if intensity > 0.5 else "black", zorder=4)
 
-    # 2. DISEGNO DEL CAMMINO (FRECCE VITERBI)
     for t in range(n_words - 1):
         start_node = (t, tag_to_y[best_path[t]])
         end_node = (t + 1, tag_to_y[best_path[t + 1]])
 
-        # Disegniamo una freccia spessa tra i due tag consecutivi del path
         ax.annotate("",
                     xy=end_node, xycoords='data',
                     xytext=start_node, textcoords='data',
@@ -146,7 +137,6 @@ def draw_viterbi_trellis_with_path(hmm_model, sentence, best_path, figsize_mult=
                                     connectionstyle="arc3,rad=0.1"),
                     zorder=2)
 
-    # 3. CONFIGURAZIONE ESTETICA
     ax.set_xlim(-0.7, n_words - 0.3)
     ax.set_ylim(-0.7, n_tags - 0.3)
     ax.set_xticks(range(n_words))
