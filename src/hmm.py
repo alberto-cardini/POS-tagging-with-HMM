@@ -1,5 +1,4 @@
 from draw import *
-from evaluation import *
 
 def run_viterbi(hmm_model, sentence):
     """
@@ -73,50 +72,19 @@ if __name__ == "__main__":
     print("Training in corso...")
 
     model_laplace = train_hmm_supervised_with_unk()
-    model_over_smoothing = train_hmm_supervised_with_unk(laplace_smoothing = 0.001)
-    model_001 = train_hmm_supervised_with_unk(laplace_smoothing = 0.01)
-    model_01 = train_hmm_supervised_with_unk(laplace_smoothing = 0.1)
+    model_001 = train_hmm_supervised_with_unk(laplace_smoothing = 0.001)
 
-    plot_transition_gradient(model_laplace, "HMM Transition Gradient ($l = 1$)")
-    plot_transition_gradient(model_over_smoothing, "HMM Transition Gradient ($l = 30$)")
-    plot_transition_gradient(model_001, "HMM Transition Gradient ($l = 0.01$)")
-    plot_transition_gradient(model_01, "HMM Transition Gradient ($l = 0.1$)")
-
-    test_sentence = ["Jane", "is", "really", "hungry", "and", "would", "like", "to", "have", "dinner", "."]
-    #test_sentence = ["The", "Justice", "Department", "released", "files", "from", "investigations", "into", "notorious", "sex", "offender", "Jeffrey", "Epstein", "."]
+    test_sentence = ["I", "saw", "her", "duck", "."]
 
     path_laplace, v_matrix_laplace, tags_list_laplace = run_viterbi(model_laplace, test_sentence)
     print("Tag stimati con l = 1:", path_laplace)
 
-    path_os, v_matrix_os, tags_list_os = run_viterbi(model_over_smoothing, test_sentence)
-    print("Tag stimati con l = 30:", path_os)
-
     path_001, v_matrix_001, tags_list_001 = run_viterbi(model_001, test_sentence)
-    print("Tag stimati con l = 0.01:", path_001)
-
-    path_01, v_matrix_01, tags_list_01 = run_viterbi(model_01, test_sentence)
-    print("Tag stimati con l = 0.1:", path_01)
+    print("Tag stimati con l = 0.001:", path_001)
 
     # Visualizzazioni
-    plot_viterbi_heatmap(v_matrix_laplace, tags_list_laplace, test_sentence, title="Viterbi Heatmap ( l = 1)")
-    plot_viterbi_heatmap_with_path(v_matrix_laplace, tags_list_laplace, test_sentence, path_laplace, title="Viterbi Heatmap ( l = 1)")
     plot_emission_probs(model_laplace, test_sentence, tags_list_laplace, title = "Sentence Emission Probabilities Matrix ( l = 1 )")
+    plot_viterbi_heatmap_with_path(v_matrix_laplace, tags_list_laplace, test_sentence, path_laplace, title="Viterbi Heatmap ( l = 1)")
 
-    plot_viterbi_heatmap(v_matrix_os, tags_list_os, test_sentence, title="Viterbi Heatmap ( l = 30)")
-    plot_viterbi_heatmap_with_path(v_matrix_os, tags_list_os, test_sentence, path_os, title="Viterbi Heatmap ( l = 30)")
-    plot_emission_probs(model_over_smoothing, test_sentence, tags_list_os, title = "Sentence Emission Probabilities Matrix ( l = 30 )")
-
-    plot_viterbi_heatmap(v_matrix_001, tags_list_001, test_sentence, title="Viterbi Heatmap ( l = 0.01)")
-    plot_viterbi_heatmap_with_path(v_matrix_001, tags_list_001, test_sentence, path_001, title="Viterbi Heatmap ( l = 0.01)")
-    plot_emission_probs(model_001, test_sentence, tags_list_001, title = "Sentence Emission Probabilities Matrix ( l = 0.01 )")
-
-    plot_viterbi_heatmap(v_matrix_01, tags_list_01, test_sentence, title="Viterbi Heatmap ( l = 0.1)")
-    plot_viterbi_heatmap_with_path(v_matrix_01, tags_list_01, test_sentence, path_01, title="Viterbi Heatmap ( l = 0.1)")
-    plot_emission_probs(model_01, test_sentence, tags_list_01, title = "Sentence Emission Probabilities Matrix ( l = 0.1 )")
-
-
-
-    run_benchmark(model_laplace)
-    run_benchmark(model_over_smoothing)
-    run_benchmark(model_001)
-    run_benchmark(model_01)
+    plot_emission_probs(model_001, test_sentence, tags_list_001, title="Sentence Emission Probabilities Matrix ( l = 0.001 )")
+    plot_viterbi_heatmap_with_path(v_matrix_001, tags_list_001, test_sentence, path_001, title="Viterbi Heatmap ( l = 0.001)")
