@@ -1,12 +1,6 @@
-import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from collections import Counter, defaultdict
-from datasets import load_dataset
-
-# Importiamo le funzioni dai tuoi file
-from train import train_hmm_supervised_with_unk
-from hmm import run_viterbi
 
 def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
     sns.set_theme(style="whitegrid")
@@ -17,7 +11,7 @@ def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
     values = [token_acc, sent_acc]
     sns.barplot(x=metrics, y=values, ax=ax1, palette="viridis")
     ax1.set_ylim(0, 105)
-    ax1.set_title("Performance Generali (%)", fontsize=14)
+    ax1.set_title("General performance (%)", fontsize=14)
     for i, v in enumerate(values):
         ax1.text(i, v + 2, f"{v:.2f}%", ha='center', fontweight='bold')
 
@@ -37,9 +31,9 @@ def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
 
     sns.heatmap(matrix_perc, annot=True, fmt=".1f", cmap="YlGnBu",
                 xticklabels=top_tags, yticklabels=top_tags, ax=ax2)
-    ax2.set_title("Matrice di Confusione (% errori tra Top Tag)", fontsize=14)
-    ax2.set_xlabel("Tag Predetto")
-    ax2.set_ylabel("Tag Reale")
+    ax2.set_title("Confusion Matrix (% Top tag errors)", fontsize=14)
+    ax2.set_xlabel("Inferred Tag")
+    ax2.set_ylabel("Real Tag")
 
     plt.tight_layout()
     plt.show()
@@ -86,3 +80,80 @@ def run_benchmark(model, dataset_name= "batterydata/pos_tagging"):
 
     # Generazione dei grafici
     plot_benchmark_results(t_acc, s_acc, confusion_pairs, model["tags"])
+
+
+import matplotlib.pyplot as plt
+from datasets import load_dataset
+from hmm import run_viterbi
+
+
+def benchmark_pretrained_models(trained_models, alphas, dataset_name="batterydata/pos_tagging"):
+    """
+    Esegue il benchmark su una lista di modelli già addestrati.
+    Visualizza i risultati su un piano cartesiano con asse X logaritmico.
+    """
+    print("Caricamento dataset di test...")
+    test_dataset = load_dataset(dataset_name)["test"]
+
+    token_accs = []
+    sent_accs = []
+
+    for i, model in enumerate(trained_models):
+        alpha = alphas[i]
+        t_total, t_correct = 0, 0
+        s_perfect = 0
+
+        print(f"Valutazione in corso: Alpha = {alpha}...")
+
+        for ex in test_dataset:
+            words = ex["words"]
+            gold_tags = [str(t) for t in ex["labels"]]
+
+            try:
+                # Esecuzione Viterbi
+                pred_tags, _, _ = run_viterbi(model, words)
+
+                matches = sum(1 for g, p in zip(gold_tags, pred_tags) if g == p)
+                t_correct += matches
+                t_total += len(gold_tags)
+                if matches == len(gold_tags):
+                    s_perfect += 1
+            except Exception:
+                continue
+
+        token_accs.append((t_correct / t_total) * 100 if t_total > 0 else 0)
+        sent_accs.append((s_perfect / len(test_dataset)) * 100)
+
+    # --- Configurazione Plot ---
+    plt.figure(figsize=(10, 6))
+
+    # Plot delle due curve
+    plt.plot(alphas, token_accs, marker='o', markersize=8, label='Token Accuracy', color='#2c3e50', linewidth=2)
+    plt.plot(alphas, sent_accs, marker='s', markersize=8, label='Sentence Accuracy', color='#e74c3c', linewidth=2)
+
+    # SCALA LOGARITMICA
+    plt.xscale('log')
+
+    # Abbellimenti grafici
+    plt.title('Model performance with different smoothing coefficient', fontsize=14, pad=15)
+    plt.xlabel('Smoothing Coefficient ($l$) - Log Scale', fontsize=12)
+    plt.ylabel('Accuracy (%)', fontsize=12)
+    plt.grid(True, which="both", ls="-", alpha=0.3)  # Grid per entrambi i livelli logaritmici
+    plt.legend(frameon=True, loc='lower left')
+
+    plt.tight_layout()
+    plt.show()
+
+    return token_accs, sent_accs
+
+
+# Esempio di test rapido
+if __name__ == "__main__":
+    from train import train_hmm_supervised_with_unk
+
+    # Array di test: copriamo diversi ordini di grandezza
+    test_alphas = [1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 100, 1000]
+    print(f"Addestramento di {len(test_alphas)} modelli...")
+    models = [train_hmm_supervised_with_unk(laplace_smoothing=a) for a in test_alphas]
+
+    print(benchmark_pretrained_models(models, test_alphas))
