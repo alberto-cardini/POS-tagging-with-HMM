@@ -8,7 +8,6 @@ from datasets import load_dataset
 from train import train_hmm_supervised_with_unk
 from hmm import run_viterbi
 
-
 def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
     sns.set_theme(style="whitegrid")
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -46,12 +45,11 @@ def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
     plt.show()
 
 
-def run_visual_benchmark(dataset_name="batterydata/pos_tagging"):
+def run_benchmark(model, dataset_name= "batterydata/pos_tagging"):
     print("Addestramento modello in corso...")
     # Il modello viene addestrato stimando transizioni ed emissioni
-    model = train_hmm_supervised_with_unk(dataset_name=dataset_name)
 
-    test_dataset = load_dataset(dataset_name)["train"]
+    test_dataset = load_dataset(dataset_name)["test"]
 
     total_tokens, correct_tokens = 0, 0
     perfect_sentences, total_sentences = 0, len(test_dataset)
@@ -88,7 +86,3 @@ def run_visual_benchmark(dataset_name="batterydata/pos_tagging"):
 
     # Generazione dei grafici
     plot_benchmark_results(t_acc, s_acc, confusion_pairs, model["tags"])
-
-
-if __name__ == "__main__":
-    run_visual_benchmark()
