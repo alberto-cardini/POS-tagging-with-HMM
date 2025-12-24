@@ -5,7 +5,7 @@ import math
 
 def plot_viterbi_heatmap(viterbi_matrix, tags, words, title="Viterbi Heatmap (Log-Prob)"):
     #Crea una heatmap pulita gestendo i valori -inf.
-    plt.figure(figsize=(12, len(tags) * 0.4))
+    plt.figure(figsize=(10, len(tags) * 0.4))
 
     # Sostituiamo -inf con un valore molto basso per non rompere la scala colori
     clean_matrix = viterbi_matrix.copy()

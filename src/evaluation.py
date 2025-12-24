@@ -152,7 +152,7 @@ if __name__ == "__main__":
     from train import train_hmm_supervised_with_unk
 
     # Array di test: copriamo diversi ordini di grandezza
-    test_alphas = [1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 100, 1000]
+    test_alphas = [1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0, 5.0, 1e1, 1e2, 1e3, 1e5, 1e6, 1e7]
     print(f"Addestramento di {len(test_alphas)} modelli...")
     models = [train_hmm_supervised_with_unk(laplace_smoothing=a) for a in test_alphas]
 
