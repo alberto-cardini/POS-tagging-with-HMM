@@ -1,11 +1,11 @@
 from datasets import load_dataset
 from collections import Counter, defaultdict
 
-# Tag speciali per modellare l'inizio e la fine della frase
+# Special tags to model the start and end of the sentence
 START_TAG = "<START>"
 END_TAG = "<END>"
 
-# Token speciale per raggruppare parole rare e gestire parole mai viste (OOV) in test
+# Special token to group rare words and handle Out-Of-Vocabulary (OOV) words during testing
 UNKNOWN_WORD = "<UNK>"
 
 def train_hmm_supervised_with_unk(
@@ -17,159 +17,159 @@ def train_hmm_supervised_with_unk(
         laplace_smoothing=1.0
 ):
 
-    # Obiettivo: stimare i parametri di un HMM supervisionato per POS-tagging.
+    # Objective: estimate parameters of a supervised HMM for POS-tagging.
 
-    # Parametri da stimare:
+    # Parameters to estimate:
     # - transition_probabilities[prev_tag][curr_tag] = P(curr_tag | prev_tag)
     # - emission_probabilities[tag][word]           = P(word | tag)
 
-    # Il dataset è supervisionato: ogni frase ha già (parole, tag).
-    # Quindi NON serve Baum-Welch: basta contare e normalizzare.
+    # The dataset is supervised: every sentence already has (words, tags).
+    # Therefore, Baum-Welch is NOT needed: we just count and normalize.
 
-    # 1) CARICAMENTO DATASET
-    # load_dataset scarica (se serve) e carica il dataset in cache.
-    # dataset[split_name] ti dà lo split "train" (o "test", ecc.)
+    # 1) LOAD DATASET
+    # load_dataset downloads (if needed) and loads the dataset into cache.
+    # dataset[split_name] gives you the "train" split (or "test", etc.)
     dataset = load_dataset(dataset_name)[split_name]
 
-    # 2) PRIMO PASSAGGIO: CONTO FREQUENZE DELLE PAROLE
-    # Serve per decidere quali parole sono "rare" e devono diventare <UNK>. Uso Counter() che è uno speciale dizionario
-    # tale che ogni tupla è del tipo: "key" : frequency
+    # 2) FIRST PASS: COUNT WORD FREQUENCIES
+    # Needed to decide which words are "rare" and must become <UNK>. Using Counter(), a special dictionary
+    # where each item is: "key" : frequency
     word_frequency = Counter()
 
-    # Scorro tutte le frasi nel training set
+    # Iterate through all sentences in the training set
     for sentence in dataset:
-        # Scorro tutte le parole della frase
+        # Iterate through all words in the sentence
         for word in sentence[word_field]:
-            # Incremento il conteggio della parola
+            # Increment word count
             word_frequency[word] += 1
 
-    # Funzione che applica la regola: se la parola è rara => <UNK>
+    # Function applying the rule: if word is rare => <UNK>
     def normalize_word(word):
 
-        # Se una parola compare meno di min_word_frequency volte nel training,
-        # la mappo a <UNK>.
+        # If a word appears fewer than min_word_frequency times in training,
+        # map it to <UNK>.
 
-        # Perché? così durante il training posso stimare P(<UNK> | tag),
-        # e in test posso mappare parole mai viste a <UNK> invece di avere prob 0.
+        # Why? So during training I can estimate P(<UNK> | tag),
+        # and in testing I can map unseen words to <UNK> instead of having prob 0.
 
         if word_frequency[word] < min_word_frequency:
             return UNKNOWN_WORD
         return word
 
-    # 3) STRUTTURE DI CONTEGGIO (counts)
-    # Questi sono i "sufficient statistics" dell'HMM supervisionato.
+    # 3) COUNTING STRUCTURES (counts)
+    # These are the "sufficient statistics" of the supervised HMM.
     transition_count = Counter()
-    # transition_count[(prev_tag, curr_tag)] = quante volte vedo prev_tag -> curr_tag
+    # transition_count[(prev_tag, curr_tag)] = how many times we see prev_tag -> curr_tag
 
     emission_count = Counter()
-    # emission_count[(tag, word)] = quante volte il tag "tag" etichetta la parola "word"
+    # emission_count[(tag, word)] = how many times the tag "tag" labels the word "word"
 
     tag_occurrence_count = Counter()
-    # tag_occurrence_count[tag] = quante volte compare quel tag (serve per normalizzare emissioni)
+    # tag_occurrence_count[tag] = how many times that tag appears (needed to normalize emissions)
 
     previous_tag_count = Counter()
-    # previous_tag_count[prev_tag] = quante volte prev_tag appare come "tag precedente"
-    # (serve per normalizzare transizioni)
+    # previous_tag_count[prev_tag] = how many times prev_tag appears as a "previous tag"
+    # (needed to normalize transitions)
 
-    # Insiemi che useremo per sapere quali tag e quali parole esistono nel modello
+    # Sets we will use to know which tags and words exist in the model
     tag_set = {START_TAG, END_TAG}
     vocabulary = {UNKNOWN_WORD}
 
-    # 4) SECONDO PASSAGGIO: SCANSIONE E CONTEGGI DI TRANSIZIONI/EMISSIONI
+    # 4) SECOND PASS: SCANNING AND COUNTING TRANSITIONS/EMISSIONS
     for sentence in dataset:
 
-        # Prendo le parole e applico la normalizzazione (<UNK> per parole rare). Ottengo una lista di tutte le parole
-        # del dataset e i vari UNK
+        # Get words and apply normalization (<UNK> for rare words). Obtain a list of all words
+        # in the dataset including UNKs
         words = [normalize_word(w) for w in sentence[word_field]]
 
-        # Prendo i tag (già forniti dal dataset)
+        # Get tags (already provided by the dataset)
         tags = sentence[tag_field]
 
-        # Controllo di coerenza: deve esserci un tag per ogni parola
+        # Consistency check: there must be a tag for every word
         if len(words) != len(tags):
             raise ValueError("Numero di parole e tag non coincide")
 
-        # 4a) TRANSIZIONE DI INIZIO: <START> -> primo tag
-        # Questo serve a modellare la distribuzione del primo tag. Per ogni frase START è il predecessore della prima parola
-        # (che di per se, essendo la prima, non avrebbe predecessori e non potrei calcolare la prob di transizione). Mi
-        # serve per calcolare P(t_1 | START). In pratica ho alla fine che: previous_tag_count[START_TAG] = numero frasi
+        # 4a) START TRANSITION: <START> -> first tag
+        # This models the distribution of the first tag. For every sentence, START is the predecessor of the first word
+        # (which, being first, wouldn't have predecessors otherwise). Needed to calculate P(t_1 | START).
+        # Effectively: previous_tag_count[START_TAG] = number of sentences
         previous_tag_count[START_TAG] += 1
 
-        # Sto imponendo di aver osservato una volta la transizione da START a tags[0] (primo elemento della frase). Lo
-        # metto a tavolino per trovare le prob. iniziali. Es: sto contando START -> DT, se molte frasi cominciano con DT
-        # allora transition_count[(START_TAG, DT)] sarà alto.
+        # I am recording an observed transition from START to tags[0] (first element). This sets up
+        # initial probabilities. Ex: counting START -> DT; if many sentences start with DT,
+        # transition_count[(START_TAG, DT)] will be high.
         transition_count[(START_TAG, tags[0])] += 1
 
-        # 4b) SCORRO POSIZIONE PER POSIZIONE NELLA FRASE
+        # 4b) ITERATE POSITION BY POSITION IN THE SENTENCE
         for position, (word, tag) in enumerate(zip(words, tags)):
 
-            # EMISSIONE: il tag "tag" emette la parola "word". Lo uso poi per calcolare P(w|t)
+            # EMISSION: tag "tag" emits word "word". Used later to calculate P(w|t)
             emission_count[(tag, word)] += 1
 
-            # Conteggio totale del tag (denominatore per le emissioni, ovvero B). Visto che: P(w|t) = c(t,w) / c(t)
+            # Total count of the tag (denominator for emissions, i.e., Matrix B). Since: P(w|t) = c(t,w) / c(t)
             tag_occurrence_count[tag] += 1
 
-            # Aggiorno gli insiemi di tag e vocabolario. Lo userò per calcolare le matrici A e B
+            # Update tag and vocabulary sets. Will be used to calculate matrices A and B
             tag_set.add(tag)
             vocabulary.add(word)
 
-            # TRANSIZIONE INTERNA: tag_{i-1} -> tag_i. Qua sto trovando numeratore e denominatore che poi uso per calcolare:
+            # INTERNAL TRANSITION: tag_{i-1} -> tag_i. Finding numerator and denominator to calculate:
             # P(t_i | t_i-1) = c(t_i-1, t_i) / c(t_i-1)
-            if position > 0:                            # Parto da pos > 0 perchè il valore iniziale lo stimo con START.
+            if position > 0:                            # Start from pos > 0 because the initial value is estimated with START.
                 previous_tag = tags[position - 1]
                 transition_count[(previous_tag, tag)] += 1
                 previous_tag_count[previous_tag] += 1
 
-        # 4c) TRANSIZIONE DI FINE: ultimo tag -> <END>. Serve a modellare come "termina" una frase. Stesso discorso dello START
+        # 4c) END TRANSITION: last tag -> <END>. Models how a sentence "ends". Same logic as START
         last_tag = tags[-1]
         transition_count[(last_tag, END_TAG)] += 1
         previous_tag_count[last_tag] += 1
 
-    # 5) DALLE FREQUENZE ALLE PROBABILITÀ: TRANSIZIONI
-    # Vogliamo: P(curr | prev) = (count(prev,curr) + k) / (count(prev) + k*|T|) Perchè uso Laplace Smoothing.
+    # 5) FROM FREQUENCIES TO PROBABILITIES: TRANSITIONS
+    # We want: P(curr | prev) = (count(prev,curr) + k) / (count(prev) + k*|T|) because we use Laplace Smoothing.
     transition_probabilities = defaultdict(dict)
 
     number_of_tags = len(tag_set)
 
     for previous_tag in tag_set:
-        # Denominatore: quante volte ho visto previous_tag come predecessore
-        # + smoothing su tutte le possibili destinazioni (|T|)
+        # Denominator: how many times previous_tag was seen as predecessor
+        # + smoothing over all possible destinations (|T|)
         denominator = previous_tag_count[previous_tag] + laplace_smoothing * number_of_tags
 
         for current_tag in tag_set:
-            # Numeratore: quante volte ho visto prev -> curr
+            # Numerator: how many times we saw prev -> curr
             # + smoothing
             numerator = transition_count[(previous_tag, current_tag)] + laplace_smoothing
 
-            transition_probabilities[previous_tag][current_tag] = numerator / denominator # Matrice A
+            transition_probabilities[previous_tag][current_tag] = numerator / denominator # Matrix A
 
-    # 6) DALLE FREQUENZE ALLE PROBABILITÀ: EMISSIONI
-    # Vogliamo: P(word | tag) = (count(tag,word) + k) / (count(tag) + k*|V|)
+    # 6) FROM FREQUENCIES TO PROBABILITIES: EMISSIONS
+    # We want: P(word | tag) = (count(tag,word) + k) / (count(tag) + k*|V|)
     emission_probabilities = defaultdict(dict)
 
     vocabulary_size = len(vocabulary)
 
     for tag in tag_set:
 
-        # START e END non "emettono parole": sono solo stati di controllo
+        # START and END do not "emit words": they are just control states
         if tag in (START_TAG, END_TAG):
             continue
 
-        # Denominatore: quante volte compare questo tag
-        # + smoothing su tutte le parole del vocabolario (|V|)
+        # Denominator: how many times this tag appears
+        # + smoothing over all vocabulary words (|V|)
         denominator = tag_occurrence_count[tag] + laplace_smoothing * vocabulary_size
 
         for word in vocabulary:
-            # Numeratore: quante volte il tag emette quella parola
+            # Numerator: how many times the tag emits that word
             # + smoothing
             numerator = emission_count[(tag, word)] + laplace_smoothing
 
-            emission_probabilities[tag][word] = numerator / denominator # Matrice B
+            emission_probabilities[tag][word] = numerator / denominator # Matrix B
 
-    # 7) RITORNO DEL MODELLO
-    # Questi sono esattamente i parametri che userai in Viterbi:
-    # - transition_probabilities per muoverti tra tag
-    # - emission_probabilities per valutare quanto una parola è compatibile con un tag
+    # 7) RETURN THE MODEL
+    # These are exactly the parameters you will use in Viterbi:
+    # - transition_probabilities to move between tags
+    # - emission_probabilities to evaluate how compatible a word is with a tag
     hmm_model = {
         "transition_probabilities": transition_probabilities,
         "emission_probabilities": emission_probabilities,
