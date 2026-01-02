@@ -14,7 +14,7 @@ def train_hmm_supervised_with_unk(
         word_field="words",
         tag_field="labels",
         min_word_frequency=2,
-        laplace_smoothing=1.0
+        smoothing=1.0
 ):
 
     # Objective: estimate parameters of a supervised HMM for POS-tagging.
@@ -87,7 +87,7 @@ def train_hmm_supervised_with_unk(
 
         # Consistency check: there must be a tag for every word
         if len(words) != len(tags):
-            raise ValueError("Numero di parole e tag non coincide")
+            raise ValueError("Error: the total number of words and the total number of tags are not consistent")
 
         # 4a) START TRANSITION: <START> -> first tag
         # This models the distribution of the first tag. For every sentence, START is the predecessor of the first word
@@ -106,7 +106,7 @@ def train_hmm_supervised_with_unk(
             # EMISSION: tag "tag" emits word "word". Used later to calculate P(w|t)
             emission_count[(tag, word)] += 1
 
-            # Total count of the tag (denominator for emissions, i.e., Matrix B). Since: P(w|t) = c(t,w) / c(t)
+            # Total count of the tag (denominator for emissions, i.e., Matrix B). Since: P(w|t) = c(w,t) / c(t)
             tag_occurrence_count[tag] += 1
 
             # Update tag and vocabulary sets. Will be used to calculate matrices A and B
@@ -115,7 +115,7 @@ def train_hmm_supervised_with_unk(
 
             # INTERNAL TRANSITION: tag_{i-1} -> tag_i. Finding numerator and denominator to calculate:
             # P(t_i | t_i-1) = c(t_i-1, t_i) / c(t_i-1)
-            if position > 0:                            # Start from pos > 0 because the initial value is estimated with START.
+            if position > 0:                            # Start from pos = 1 because the initial value is estimated with START.
                 previous_tag = tags[position - 1]
                 transition_count[(previous_tag, tag)] += 1
                 previous_tag_count[previous_tag] += 1
@@ -126,7 +126,7 @@ def train_hmm_supervised_with_unk(
         previous_tag_count[last_tag] += 1
 
     # 5) FROM FREQUENCIES TO PROBABILITIES: TRANSITIONS
-    # We want: P(curr | prev) = (count(prev,curr) + k) / (count(prev) + k*|T|) because we use Laplace Smoothing.
+    # We want: P(curr | prev) = (count(prev,curr) + k) / (count(prev) + k*|T|) because we use Additive Smoothing.
     transition_probabilities = defaultdict(dict)
 
     number_of_tags = len(tag_set)
@@ -134,12 +134,12 @@ def train_hmm_supervised_with_unk(
     for previous_tag in tag_set:
         # Denominator: how many times previous_tag was seen as predecessor
         # + smoothing over all possible destinations (|T|)
-        denominator = previous_tag_count[previous_tag] + laplace_smoothing * number_of_tags
+        denominator = previous_tag_count[previous_tag] + smoothing * number_of_tags
 
         for current_tag in tag_set:
             # Numerator: how many times we saw prev -> curr
             # + smoothing
-            numerator = transition_count[(previous_tag, current_tag)] + laplace_smoothing
+            numerator = transition_count[(previous_tag, current_tag)] + smoothing
 
             transition_probabilities[previous_tag][current_tag] = numerator / denominator # Matrix A
 
@@ -157,12 +157,12 @@ def train_hmm_supervised_with_unk(
 
         # Denominator: how many times this tag appears
         # + smoothing over all vocabulary words (|V|)
-        denominator = tag_occurrence_count[tag] + laplace_smoothing * vocabulary_size
+        denominator = tag_occurrence_count[tag] + smoothing * vocabulary_size
 
         for word in vocabulary:
             # Numerator: how many times the tag emits that word
             # + smoothing
-            numerator = emission_count[(tag, word)] + laplace_smoothing
+            numerator = emission_count[(tag, word)] + smoothing
 
             emission_probabilities[tag][word] = numerator / denominator # Matrix B
 
