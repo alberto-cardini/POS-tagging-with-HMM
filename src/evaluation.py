@@ -153,6 +153,6 @@ if __name__ == "__main__":
     # Test array: covering different orders of magnitude
     test_alphas = [1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0, 5.0, 1e1, 1e2, 1e3, 1e5, 1e6, 1e7]
     print(f"Training {len(test_alphas)} models...")
-    models = [train_hmm_supervised_with_unk(laplace_smoothing=a) for a in test_alphas]
+    models = [train_hmm_supervised_with_unk(smoothing=a) for a in test_alphas]
 
     print(benchmark_pretrained_models(models, test_alphas))
