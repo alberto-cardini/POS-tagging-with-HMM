@@ -1,4 +1,5 @@
-from draw import *
+import math
+import numpy as np
 
 def run_viterbi(hmm_model, sentence):
     """
@@ -65,26 +66,3 @@ def run_viterbi(hmm_model, sentence):
     best_path = [tags[i] for i in best_path_indices]
 
     return best_path, viterbi_table, tags
-
-if __name__ == "__main__":
-    from train import *
-
-    print("Training in corso...")
-
-    model_laplace = train_hmm_supervised_with_unk()
-    model_001 = train_hmm_supervised_with_unk(laplace_smoothing = 0.001)
-
-    test_sentence = ["John", "is", "going", "to", "the", "office", "."]
-
-    path_laplace, v_matrix_laplace, tags_list_laplace = run_viterbi(model_laplace, test_sentence)
-    print("Tag stimati con l = 1:", path_laplace)
-
-    path_001, v_matrix_001, tags_list_001 = run_viterbi(model_001, test_sentence)
-    print("Tag stimati con l = 0.001:", path_001)
-
-    # Visualization
-    plot_emission_probs(model_laplace, test_sentence, tags_list_laplace, title = "Sentence Emission Probabilities Matrix ( l = 1 )")
-    plot_viterbi_heatmap_with_path(v_matrix_laplace, tags_list_laplace, test_sentence, path_laplace, title="Viterbi Heatmap ( l = 1 )")
-
-    plot_emission_probs(model_001, test_sentence, tags_list_001, title="Sentence Emission Probabilities Matrix ( l = 0.001 )")
-    plot_viterbi_heatmap_with_path(v_matrix_001, tags_list_001, test_sentence, path_001, title="Viterbi Heatmap ( l = 0.001 )")

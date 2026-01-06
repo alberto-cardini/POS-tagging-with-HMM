@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter, defaultdict
 import matplotlib.pyplot as plt
 from datasets import load_dataset
-from hmm import run_viterbi
+from viterbi import run_viterbi
 # Note: Ensure 'hmm' and 'train' modules are available in your path or current directory
 
 def plot_benchmark_results(token_acc, sent_acc, confusion_data, tags):
