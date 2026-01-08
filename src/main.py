@@ -103,4 +103,4 @@ for sid, (s_name, words) in selected:
             close=True
         )
 
-print(f"Plots salvati in: {os.path.abspath(out_root)}")
+print(f"Plots saved in: {os.path.abspath(out_root)}")
