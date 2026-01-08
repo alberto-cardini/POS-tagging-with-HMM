@@ -20,13 +20,13 @@ parser.add_argument(
     "-s", "--sentence",
     type=str,
     default="all",
-    help="ID frase: 1..5 oppure 'all'"
+    help="ID phares: 1..5 or 'all'"
 )
 parser.add_argument(
     "-l", "--smoothing",
     type=float,
     default=None,
-    help="Se specificato, allena solo quel modello. Se omesso: usa 1.0 e 0.001."
+    help="If specified, train only the model with this smoothing factor. If omitted: uses 1.0 and 0.001."
 )
 args = parser.parse_args()
 
