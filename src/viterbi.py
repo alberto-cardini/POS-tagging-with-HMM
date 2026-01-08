@@ -19,6 +19,7 @@ def run_viterbi(hmm_model, sentence):
 
     # Normalization of the input sentence. Replace the unknown words with the tag <UNK>
     words = [w if w in vocab else "<UNK>" for w in sentence]
+    print(f"Filtered sentence: {words}")
 
     # Table init with -inf (log-space) in each entry. In other terms, all the probabilities are initialized at zero.
     # Rows = Tags, Columns = sentence words
